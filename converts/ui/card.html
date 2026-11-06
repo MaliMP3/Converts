@@ -144,10 +144,10 @@
       mode.textContent = state.phase === 'run' ? 'Em segundo plano' : state.phase === 'done' ? 'Pronto' : 'Não deu certo';
     }
 
-    document.getElementById('close').addEventListener('click', () => window.roda.dismissCard());
-    document.getElementById('open').addEventListener('click', () => window.roda.openResult());
-    document.getElementById('open-file').addEventListener('click', () => window.roda.openFile());
-    if (window.roda && window.roda.onCard) window.roda.onCard(render);
+    document.getElementById('close').addEventListener('click', () => window.converts.dismissCard());
+    document.getElementById('open').addEventListener('click', () => window.converts.openResult());
+    document.getElementById('open-file').addEventListener('click', () => window.converts.openFile());
+    if (window.converts && window.converts.onCard) window.converts.onCard(render);
   </script>
 </body>
 </html>

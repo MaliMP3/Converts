@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('roda', {
+contextBridge.exposeInMainWorld('converts', {
   onOpen(callback) {
     ipcRenderer.on('wheel-open', (_event, payload) => callback(payload));
   },

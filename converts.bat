@@ -1,3 +1,3 @@
 @echo off
-cd /d "%~dp0roda"
+cd /d "%~dp0converts"
 call run.bat

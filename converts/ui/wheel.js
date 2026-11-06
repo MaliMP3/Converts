@@ -275,7 +275,7 @@ async function confirm() {
     setLane(format.id);
     return;
   }
-  if (!window.roda) {
+  if (!window.converts) {
     state.bad = false;
     state.message = 'Visual de teste. Abra pelo atalho no app.';
     paint();
@@ -295,7 +295,7 @@ async function confirm() {
       state.bad = false;
       paint();
       label.textContent = format.label;
-      const picked = await window.roda.pick(state.lane);
+      const picked = await window.converts.pick(state.lane);
       if (!picked) {
         state.message = '';
         paint();
@@ -304,7 +304,7 @@ async function confirm() {
       state.source = picked;
       paint();
     }
-    const started = await window.roda.beginConvert(format.id, state.lane);
+    const started = await window.converts.beginConvert(format.id, state.lane);
     if (!started || started.ok === false) {
       state.bad = true;
       state.message = (started && started.error) || 'Não consegui converter.';
@@ -325,8 +325,8 @@ function closeWheel() {
   if (state.busy) return;
   hideHotkeys();
   document.body.classList.remove('show');
-  if (window.roda) {
-    setTimeout(() => window.roda.close(), 160);
+  if (window.converts) {
+    setTimeout(() => window.converts.close(), 160);
   }
 }
 
@@ -416,7 +416,7 @@ async function saveHotkeys() {
     note('Defina um atalho ou mantenha Ctrl+Shift+Espaço.', true);
     return;
   }
-  const result = await window.roda.saveShortcuts(custom, keepDefault.checked);
+  const result = await window.converts.saveShortcuts(custom, keepDefault.checked);
   if (!result || result.ok === false) {
     const reason = (result && (result.error || (result.failed || []).join(', '))) || 'esse atalho';
     note(`Não consegui registrar ${reason}.`, true);
@@ -458,8 +458,8 @@ hotkeyBtn.addEventListener('click', async () => {
     hideHotkeys();
     return;
   }
-  if (window.roda && window.roda.getShortcuts) {
-    const state = await window.roda.getShortcuts();
+  if (window.converts && window.converts.getShortcuts) {
+    const state = await window.converts.getShortcuts();
     hotkeyCards = state.custom && state.custom.length ? [state.custom[0]] : [''];
     keepDefault.checked = state.keepDefault !== false;
   }
@@ -491,12 +491,12 @@ hotkeyList.addEventListener('click', (event) => {
 });
 
 keepDefault.addEventListener('change', () => {
-  if (window.roda) saveHotkeys();
+  if (window.converts) saveHotkeys();
 });
 
 document.getElementById('hotkey-reset').addEventListener('click', async () => {
-  if (!window.roda) return;
-  const state = await window.roda.resetShortcuts();
+  if (!window.converts) return;
+  const state = await window.converts.resetShortcuts();
   hotkeyCards = [''];
   keepDefault.checked = state.keepDefault !== false;
   listening = -1;
@@ -541,8 +541,8 @@ window.addEventListener('contextmenu', (event) => event.preventDefault());
 build();
 paint();
 
-if (window.roda) {
-  window.roda.onOpen((payload) => openWith(payload.source));
+if (window.converts) {
+  window.converts.onOpen((payload) => openWith(payload.source));
 } else {
   openWith({ kind: 'file', name: 'Exemplo.docx', ext: '.docx', saved: true, path: '' });
 }

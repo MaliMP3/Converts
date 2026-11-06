@@ -2,24 +2,24 @@ $ErrorActionPreference = 'Stop'
 
 function Out-Json($obj) {
   $json = $obj | ConvertTo-Json -Compress -Depth 6
-  $target = $env:RODA_RESULT
+  $target = $env:CONVERTS_RESULT
   [System.IO.File]::WriteAllText($target, $json, (New-Object System.Text.UTF8Encoding $false))
 }
 
 trap {
   $msg = $_.Exception.Message
   if ($_.Exception.InnerException) { $msg = $_.Exception.InnerException.Message }
-  if ($env:RODA_HOST -eq '1') { continue }
+  if ($env:CONVERTS_HOST -eq '1') { continue }
   try { Out-Json @{ ok = $false; error = [string]$msg } } catch {}
   exit 1
 }
 
-if (-not ('RodaNative' -as [type])) {
+if (-not ('ConvertsNative' -as [type])) {
   Add-Type @"
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
-public static class RodaNative {
+public static class ConvertsNative {
   [DllImport("user32.dll")]
   public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -149,11 +149,11 @@ function Get-PptSource($ppt) {
 }
 
 function Get-Probe {
-  $hwnd = [RodaNative]::GetForegroundWindow()
+  $hwnd = [ConvertsNative]::GetForegroundWindow()
   $titleBuilder = New-Object System.Text.StringBuilder 1024
-  [void][RodaNative]::GetWindowText($hwnd, $titleBuilder, $titleBuilder.Capacity)
+  [void][ConvertsNative]::GetWindowText($hwnd, $titleBuilder, $titleBuilder.Capacity)
   $procId = [uint32]0
-  [void][RodaNative]::GetWindowThreadProcessId($hwnd, [ref]$procId)
+  [void][ConvertsNative]::GetWindowThreadProcessId($hwnd, [ref]$procId)
   $processName = ''
   try { $processName = (Get-Process -Id $procId -ErrorAction Stop).ProcessName } catch {}
   $upper = $processName.ToUpperInvariant()
@@ -434,11 +434,11 @@ function Convert-PptFile($filePath, $target, $dest) {
 }
 
 function Invoke-Convert {
-  $kind = [string]$env:RODA_KIND
-  $target = [string]$env:RODA_TARGET
-  $dest = [string]$env:RODA_DEST
-  $src = [string]$env:RODA_PATH
-  $ext = ([string]$env:RODA_EXT).ToLower()
+  $kind = [string]$env:CONVERTS_KIND
+  $target = [string]$env:CONVERTS_TARGET
+  $dest = [string]$env:CONVERTS_DEST
+  $src = [string]$env:CONVERTS_PATH
+  $ext = ([string]$env:CONVERTS_EXT).ToLower()
   Ensure-Parent $dest
 
   if ($kind -eq 'word-live') { Convert-WordLive $target $dest; return }
@@ -460,7 +460,7 @@ function Invoke-Convert {
   throw 'NO_OFFICE'
 }
 
-if ($env:RODA_HOST -eq '1') {
+if ($env:CONVERTS_HOST -eq '1') {
   [Console]::InputEncoding = New-Object System.Text.UTF8Encoding $false
   [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
   [Console]::Out.WriteLine('{"ok":true,"ready":true}')
@@ -484,7 +484,7 @@ if ($env:RODA_HOST -eq '1') {
         $payload = @{ id = $script:HostId; ok = $true; source = (Get-Probe) }
       } else {
         Invoke-Convert
-        $dest = [string]$env:RODA_DEST
+        $dest = [string]$env:CONVERTS_DEST
         if (-not (Test-Path -LiteralPath $dest)) { throw 'EMPTY_OUTPUT' }
         $payload = @{ id = $script:HostId; ok = $true; path = $dest }
       }
@@ -500,11 +500,11 @@ if ($env:RODA_HOST -eq '1') {
   exit 0
 }
 
-if ($env:RODA_ACTION -eq 'probe') {
+if ($env:CONVERTS_ACTION -eq 'probe') {
   Out-Json @{ ok = $true; source = (Get-Probe) }
 } else {
   Invoke-Convert
-  $dest = [string]$env:RODA_DEST
+  $dest = [string]$env:CONVERTS_DEST
   if (-not (Test-Path -LiteralPath $dest)) { throw 'EMPTY_OUTPUT' }
   Out-Json @{ ok = $true; path = $dest }
 }

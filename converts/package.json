@@ -1,5 +1,5 @@
 {
-  "name": "roda",
+  "name": "converts",
   "productName": "Converts",
   "version": "1.0.0",
   "private": true,
@@ -21,7 +21,7 @@
     "electron-builder": "^26.0.12"
   },
   "build": {
-    "appId": "com.roda.arquivos",
+    "appId": "com.converts.arquivos",
     "productName": "Converts",
     "asar": false,
     "directories": {
@@ -30,7 +30,7 @@
     "files": [
       "**/*",
       "!dist{,/**}",
-      "!roda.log"
+      "!converts.log"
     ],
     "win": {
       "icon": "assets/icon.ico",

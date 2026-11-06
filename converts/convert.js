@@ -30,7 +30,7 @@ function createConverter({ runOffice, renderPdf, htmlToPdf, log }) {
   }
 
   function tempPath(ext) {
-    const dir = path.join(os.tmpdir(), 'roda-arquivos');
+    const dir = path.join(os.tmpdir(), 'converts-arquivos');
     fs.mkdirSync(dir, { recursive: true });
     return path.join(dir, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
   }
@@ -73,11 +73,11 @@ function createConverter({ runOffice, renderPdf, htmlToPdf, log }) {
   async function office(source, target, dest) {
     fs.rmSync(dest, { force: true });
     return runOffice('convert', {
-      RODA_KIND: source.kind,
-      RODA_PATH: source.path || '',
-      RODA_EXT: source.ext || '',
-      RODA_TARGET: target,
-      RODA_DEST: dest,
+      CONVERTS_KIND: source.kind,
+      CONVERTS_PATH: source.path || '',
+      CONVERTS_EXT: source.ext || '',
+      CONVERTS_TARGET: target,
+      CONVERTS_DEST: dest,
     });
   }
 

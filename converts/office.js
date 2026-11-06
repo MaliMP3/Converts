@@ -50,7 +50,7 @@ function startHost() {
     'powershell.exe',
     ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', scriptPath],
     {
-      env: { ...process.env, RODA_HOST: '1', RODA_ACTION: '', RODA_RESULT: '' },
+      env: { ...process.env, CONVERTS_HOST: '1', CONVERTS_ACTION: '', CONVERTS_RESULT: '' },
       windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe'],
     }

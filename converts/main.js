@@ -17,7 +17,7 @@ const { runOffice } = require('./office');
 const { createConverter, FORMATS, textToDocx } = require('./convert');
 const { MEDIA, MEDIA_EXT, convertMedia } = require('./media');
 
-const logFile = path.join(__dirname, 'roda.log');
+const logFile = path.join(__dirname, 'converts.log');
 
 process.on('uncaughtException', (error) => {
   try {
@@ -121,7 +121,7 @@ function renderPdf(pdfPath, outputs) {
 
 function htmlToPdf(html, dest) {
   if (!printWin || printWin.isDestroyed()) printWin = new BrowserWindow(workerOptions());
-  const file = path.join(os.tmpdir(), 'roda-arquivos', 'print.html');
+  const file = path.join(os.tmpdir(), 'converts-arquivos', 'print.html');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, html, 'utf8');
   return printWin.loadFile(file).then(() => printWin.webContents.printToPDF({
@@ -158,7 +158,7 @@ async function ensureSample() {
       [
         'Converts',
         '',
-        'Abra este arquivo no Word, aperte Ctrl+Shift+Espaço e escolha o formato na roda.',
+        'Abra este arquivo no Word, aperte Ctrl+Shift+Espaço e escolha o formato no seletor.',
         '',
         'O arquivo convertido vai para a pasta Downloads, dentro de Converts.',
         'Dá para salvar em PDF, Word, PNG, JPEG, SVG, HTML, texto e RTF.',
@@ -513,7 +513,7 @@ function paintTray() {
   if (!tray) return;
   tray.setToolTip(`Converts — ${shortcutLabel()}`);
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Abrir roda', click: () => openWheel() },
+    { label: 'Abrir seletor', click: () => openWheel() },
     {
       label: 'Escolher arquivo…',
       click: async () => {
@@ -687,7 +687,7 @@ async function runSelfTest() {
   return failed.length ? 1 : 0;
 }
 
-if (process.platform === 'win32') app.setAppUserModelId('com.roda.arquivos');
+if (process.platform === 'win32') app.setAppUserModelId('com.converts.arquivos');
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -779,7 +779,7 @@ if (!gotLock) {
       });
     }
     if (registered && tray) {
-      const tip = path.join(app.getPath('userData'), 'roda-tip');
+      const tip = path.join(app.getPath('userData'), 'converts-tip');
       if (!fs.existsSync(tip)) {
         fs.mkdirSync(path.dirname(tip), { recursive: true });
         fs.writeFileSync(tip, '1');
