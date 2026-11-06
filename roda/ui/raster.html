@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Converts</title>
+</head>
+<body>
+<script>
+const { ipcRenderer } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const { pathToFileURL } = require('url');
+
+function fileUrl(file) {
+  return pathToFileURL(file).href;
+}
+
+async function loadPdfjs() {
+  const base = path.join(__dirname, '..', 'node_modules', 'pdfjs-dist');
+  const candidates = [
+    path.join(base, 'legacy', 'build', 'pdf.mjs'),
+    path.join(base, 'build', 'pdf.mjs'),
+  ];
+  let lastError = null;
+  for (const file of candidates) {
+    if (!fs.existsSync(file)) continue;
+    try {
+      return await import(fileUrl(file));
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error('pdfjs nao encontrado');
+}
+
+function workerFile() {
+  const base = path.join(__dirname, '..', 'node_modules', 'pdfjs-dist');
+  const candidates = [
+    path.join(base, 'legacy', 'build', 'pdf.worker.mjs'),
+    path.join(base, 'build', 'pdf.worker.mjs'),
+  ];
+  return candidates.find((file) => fs.existsSync(file));
+}
+
+async function openPdf(pdfjs, src) {
+  const worker = workerFile();
+  if (worker) {
+    const workerUrl = fileUrl(worker);
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+    await import(workerUrl);
+  }
+  const data = new Uint8Array(fs.readFileSync(src));
+  const task = pdfjs.getDocument({
+    data,
+    isEvalSupported: false,
+    useSystemFonts: true,
+  });
+  return task.promise;
+}
+
+async function readPageText(page) {
+  const content = await page.getTextContent();
+  let line = '';
+  const lines = [];
+  for (const item of content.items) {
+    const str = item.str || '';
+    if (!str) continue;
+    if (line && !/\s$/.test(line) && !/^\s/.test(str)) line += ' ';
+    line += str;
+    if (item.hasEOL) {
+      lines.push(line.trim());
+      line = '';
+    }
+  }
+  if (line.trim()) lines.push(line.trim());
+  return `${lines.join('\n')}\n`;
+}
+
+async function render(job) {
+  const pdfjs = await loadPdfjs();
+  const doc = await openPdf(pdfjs, job.src);
+  if (job.textOnly) {
+    const limit = Math.min(doc.numPages, 80);
+    let text = '';
+    for (let index = 1; index <= limit; index += 1) {
+      const page = await doc.getPage(index);
+      text += await readPageText(page);
+    }
+    return { pages: doc.numPages, text: text.trim() };
+  }
+  const limit = Math.min(doc.numPages, 8);
+  const scale = doc.numPages > 2 ? 1.15 : 1.35;
+  const pages = [];
+  let text = '';
+  for (let index = 1; index <= doc.numPages; index += 1) {
+    const page = await doc.getPage(index);
+    if (index <= limit) {
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.floor(viewport.width));
+      canvas.height = Math.max(1, Math.floor(viewport.height));
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      pages.push(canvas);
+    }
+    try {
+      text += await readPageText(page);
+    } catch (error) {}
+  }
+
+  let used = pages;
+  const gap = 28;
+  let height = used.reduce((sum, page) => sum + page.height, 0) + gap * Math.max(0, used.length - 1);
+  while (height > 14000 && used.length > 1) {
+    used = used.slice(0, used.length - 1);
+    height = used.reduce((sum, page) => sum + page.height, 0) + gap * Math.max(0, used.length - 1);
+  }
+  const width = Math.max(...used.map((page) => page.width));
+  const sheet = document.createElement('canvas');
+  sheet.width = width;
+  sheet.height = Math.max(1, height);
+  const ctx = sheet.getContext('2d', { alpha: false });
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, sheet.width, sheet.height);
+  let y = 0;
+  for (const page of used) {
+    ctx.drawImage(page, Math.floor((width - page.width) / 2), y);
+    y += page.height + gap;
+  }
+
+  const pngUrl = sheet.toDataURL('image/png');
+  const jpgUrl = sheet.toDataURL('image/jpeg', 0.92);
+  fs.writeFileSync(job.png, Buffer.from(pngUrl.split(',')[1], 'base64'));
+  fs.writeFileSync(job.jpg, Buffer.from(jpgUrl.split(',')[1], 'base64'));
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${sheet.width}" height="${sheet.height}" viewBox="0 0 ${sheet.width} ${sheet.height}">\n  <image href="${pngUrl}" width="${sheet.width}" height="${sheet.height}"/>\n</svg>\n`;
+  fs.writeFileSync(job.svg, svg, 'utf8');
+  fs.writeFileSync(job.txt, text.trim(), 'utf8');
+  return { pages: doc.numPages, width: sheet.width, height: sheet.height, text: text.trim() };
+}
+
+ipcRenderer.on('raster', async (_event, job) => {
+  try {
+    const info = await render(job);
+    ipcRenderer.send('raster-done', { ok: true, id: job.id, pages: info.pages, text: info.text || '' });
+  } catch (error) {
+    ipcRenderer.send('raster-done', {
+      ok: false,
+      id: job.id,
+      error: error && error.stack ? error.stack : String(error),
+    });
+  }
+});
+</script>
+</body>
+</html>

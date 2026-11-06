@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Converts</title>
+  <link rel="stylesheet" href="style.css?v=11">
+</head>
+<body class="idle">
+  <div id="vignette"></div>
+  <div id="stage">
+    <div id="wheel-wrap">
+      <svg id="wheel" viewBox="0 0 1000 1000" aria-hidden="true"></svg>
+      <div id="center">
+        <div id="label">PDF</div>
+        <div id="variant">
+          <button type="button" data-cycle="-1" aria-label="Anterior">&lt;</button>
+          <span id="count">1 / 8</span>
+          <button type="button" data-cycle="1" aria-label="Seguinte">&gt;</button>
+        </div>
+        <div id="file"></div>
+      </div>
+    </div>
+    <div id="shortcut-dock">
+      <button id="hotkey-btn" type="button">Alterar atalho</button>
+      <section id="hotkeys" hidden>
+    <div class="hotkeys-head">
+      <strong>Atalhos</strong>
+      <button id="hotkeys-close" type="button" aria-label="Fechar">×</button>
+    </div>
+    <div id="hotkey-list"></div>
+    <label class="keep"><input id="keep-default" type="checkbox" checked> Manter Ctrl+Shift+Espaço</label>
+    <button id="hotkey-reset" type="button">Resetar atalhos</button>
+    <p id="hotkey-note"></p>
+      </section>
+    </div>
+  </div>
+  <div id="hint">Mova para escolher · Clique para baixar · Esc fecha</div>
+  <script src="wheel.js?v=12"></script>
+</body>
+</html>
