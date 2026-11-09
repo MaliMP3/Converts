@@ -22,11 +22,13 @@ function createConverter({ runOffice, renderPdf, htmlToPdf, log }) {
   const pdfCache = new Map();
   const rasterCache = new Map();
   const textCache = new Map();
+  const pdfLayoutCache = new Map();
 
   function reset() {
     pdfCache.clear();
     rasterCache.clear();
     textCache.clear();
+    pdfLayoutCache.clear();
   }
 
   function tempPath(ext) {
@@ -153,20 +155,32 @@ function createConverter({ runOffice, renderPdf, htmlToPdf, log }) {
         }
       }
       if (ext === '.pdf') {
-        if (textCache.has(source.path)) return textCache.get(source.path);
-        const info = await renderPdf(source.path, { textOnly: true });
-        const text = String((info && info.text) || '').replace(/\u0000/g, '').trim();
-        if (!text) {
-          throw new Error('Esse PDF não tem texto selecionável. Se a página for uma imagem, escolha PNG ou JPEG.');
-        }
-        textCache.set(source.path, text);
-        return text;
+        const layout = await readPdfLayout(source);
+        return layout.text;
       }
     }
     if (IMAGE_EXT.has(ext)) {
       return `Imagem: ${source.name || path.basename(source.path || 'imagem')}`;
     }
     return source.name || 'Arquivo';
+  }
+
+  async function readPdfLayout(source) {
+    const key = source.path || source.name || '';
+    if (pdfLayoutCache.has(key)) return pdfLayoutCache.get(key);
+    const info = await renderPdf(source.path, { textOnly: true });
+    const text = String((info && info.text) || '').replace(/\u0000/g, '').trim();
+    if (!text) {
+      throw new Error('Esse PDF não tem texto selecionável. Se a página for uma imagem, escolha PNG ou JPEG.');
+    }
+    const layout = {
+      text,
+      html: String((info && info.html) || ''),
+      pages: (info && info.pages) || 1,
+    };
+    pdfLayoutCache.set(key, layout);
+    textCache.set(key, text);
+    return layout;
   }
 
   async function rasterize(pdfPath) {
@@ -178,14 +192,20 @@ function createConverter({ runOffice, renderPdf, htmlToPdf, log }) {
       txt: tempPath('.txt'),
     };
     const info = await renderPdf(pdfPath, outputs);
+    const text = info.text || (fs.existsSync(outputs.txt) ? fs.readFileSync(outputs.txt, 'utf8') : '');
     const result = {
       png: outputs.png,
       jpg: outputs.jpg,
       svg: outputs.svg,
-      text: info.text || (fs.existsSync(outputs.txt) ? fs.readFileSync(outputs.txt, 'utf8') : ''),
+      text,
+      html: info.html || '',
       pages: info.pages || 1,
     };
     rasterCache.set(pdfPath, result);
+    if (pdfPath) {
+      pdfLayoutCache.set(pdfPath, { text, html: result.html, pages: result.pages });
+      textCache.set(pdfPath, text);
+    }
     return result;
   }
 
@@ -290,6 +310,25 @@ function createConverter({ runOffice, renderPdf, htmlToPdf, log }) {
     if (!isLive(source) && (ext === '.docx' || ext === '.txt' || ext === '.html' || ext === '.htm' || ext === '.rtf')) {
       await writeFastDocument(source, formatId, dest);
       return;
+    }
+    if (!isLive(source) && ext === '.pdf' && (formatId === 'txt' || formatId === 'html' || formatId === 'rtf' || formatId === 'docx')) {
+      const layout = await readPdfLayout(source);
+      if (formatId === 'txt') {
+        fs.writeFileSync(dest, layout.text, 'utf8');
+        return;
+      }
+      if (formatId === 'html') {
+        fs.writeFileSync(dest, layout.html || textToHtml(source.name || 'Arquivo', layout.text), 'utf8');
+        return;
+      }
+      if (formatId === 'rtf') {
+        fs.writeFileSync(dest, textToRtf(layout.text), 'utf8');
+        return;
+      }
+      if (formatId === 'docx') {
+        await textToDocx(layout.text, dest);
+        return;
+      }
     }
     if (needsOffice(source)) {
       try {

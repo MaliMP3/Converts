@@ -10,6 +10,7 @@ const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
+const { buildPdfLayout } = require('../pdf-layout');
 
 function fileUrl(file) {
   return pathToFileURL(file).href;
@@ -58,40 +59,29 @@ async function openPdf(pdfjs, src) {
   return task.promise;
 }
 
-async function readPageText(page) {
+async function readPageItems(page) {
   const content = await page.getTextContent();
-  let line = '';
-  const lines = [];
-  for (const item of content.items) {
-    const str = item.str || '';
-    if (!str) continue;
-    if (line && !/\s$/.test(line) && !/^\s/.test(str)) line += ' ';
-    line += str;
-    if (item.hasEOL) {
-      lines.push(line.trim());
-      line = '';
-    }
-  }
-  if (line.trim()) lines.push(line.trim());
-  return `${lines.join('\n')}\n`;
+  return content.items || [];
 }
 
 async function render(job) {
   const pdfjs = await loadPdfjs();
   const doc = await openPdf(pdfjs, job.src);
+  const title = path.parse(job.src || 'Documento').name || 'Documento';
   if (job.textOnly) {
     const limit = Math.min(doc.numPages, 80);
-    let text = '';
+    const pageItems = [];
     for (let index = 1; index <= limit; index += 1) {
       const page = await doc.getPage(index);
-      text += await readPageText(page);
+      pageItems.push(await readPageItems(page));
     }
-    return { pages: doc.numPages, text: text.trim() };
+    const layout = buildPdfLayout(pageItems, title);
+    return { pages: doc.numPages, text: layout.text, html: layout.html };
   }
   const limit = Math.min(doc.numPages, 8);
   const scale = doc.numPages > 2 ? 1.15 : 1.35;
   const pages = [];
-  let text = '';
+  const pageItems = [];
   for (let index = 1; index <= doc.numPages; index += 1) {
     const page = await doc.getPage(index);
     if (index <= limit) {
@@ -106,9 +96,15 @@ async function render(job) {
       pages.push(canvas);
     }
     try {
-      text += await readPageText(page);
-    } catch (error) {}
+      pageItems.push(await readPageItems(page));
+    } catch (error) {
+      pageItems.push([]);
+    }
   }
+
+  const layout = buildPdfLayout(pageItems, title);
+  const text = layout.text;
+  const html = layout.html;
 
   let used = pages;
   const gap = 28;
@@ -136,14 +132,20 @@ async function render(job) {
   fs.writeFileSync(job.jpg, Buffer.from(jpgUrl.split(',')[1], 'base64'));
   const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${sheet.width}" height="${sheet.height}" viewBox="0 0 ${sheet.width} ${sheet.height}">\n  <image href="${pngUrl}" width="${sheet.width}" height="${sheet.height}"/>\n</svg>\n`;
   fs.writeFileSync(job.svg, svg, 'utf8');
-  fs.writeFileSync(job.txt, text.trim(), 'utf8');
-  return { pages: doc.numPages, width: sheet.width, height: sheet.height, text: text.trim() };
+  fs.writeFileSync(job.txt, text, 'utf8');
+  return { pages: doc.numPages, width: sheet.width, height: sheet.height, text, html };
 }
 
 ipcRenderer.on('raster', async (_event, job) => {
   try {
     const info = await render(job);
-    ipcRenderer.send('raster-done', { ok: true, id: job.id, pages: info.pages, text: info.text || '' });
+    ipcRenderer.send('raster-done', {
+      ok: true,
+      id: job.id,
+      pages: info.pages,
+      text: info.text || '',
+      html: info.html || '',
+    });
   } catch (error) {
     ipcRenderer.send('raster-done', {
       ok: false,

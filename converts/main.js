@@ -14,7 +14,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { runOffice } = require('./office');
-const { createConverter, FORMATS, textToDocx } = require('./convert');
+const { createConverter, FORMATS } = require('./convert');
 const { MEDIA, MEDIA_EXT, convertMedia } = require('./media');
 
 const logFile = path.join(__dirname, 'converts.log');
@@ -35,7 +35,6 @@ let card = null;
 let tray = null;
 let quitting = false;
 let current = null;
-let samplePath = '';
 let lastSaved = '';
 const jobs = [];
 let working = false;
@@ -149,32 +148,13 @@ function normalizeSource(source) {
   return next;
 }
 
-async function ensureSample() {
-  const dir = path.join(__dirname, 'exemplos');
-  fs.mkdirSync(dir, { recursive: true });
-  const docxPath = path.join(dir, 'Exemplo.docx');
-  if (!fs.existsSync(docxPath)) {
-    await textToDocx(
-      [
-        'Converts',
-        '',
-        'Abra este arquivo no Word, aperte Ctrl+Shift+Espaço e escolha o formato no seletor.',
-        '',
-        'O arquivo convertido vai para a pasta Downloads, dentro de Converts.',
-        'Dá para salvar em PDF, Word, PNG, JPEG, SVG, HTML, texto e RTF.',
-      ].join('\n'),
-      docxPath
-    );
-  }
-  return docxPath;
-}
-
 function appIcon() {
-  const ico = path.join(__dirname, 'assets', 'icon.ico');
-  const png = path.join(__dirname, 'assets', 'icon.png');
+  const ico = path.join(__dirname, 'assets', 'logo.ico');
+  const png = path.join(__dirname, 'assets', 'logo.png');
+  const tray = path.join(__dirname, 'assets', 'logo-tray.png');
   const file = fs.existsSync(ico) ? ico : png;
   let icon = nativeImage.createFromPath(file);
-  if (icon.isEmpty()) icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray.png'));
+  if (icon.isEmpty()) icon = nativeImage.createFromPath(tray);
   return icon.isEmpty() ? nativeImage.createEmpty() : icon;
 }
 
@@ -648,45 +628,6 @@ function wireIpc() {
   });
 }
 
-async function runSelfTest() {
-  const results = [];
-  async function check(name, source, formatId) {
-    try {
-      converter.reset();
-      const output = await converter.convert(source, formatId);
-      const size = fs.statSync(output.path).size;
-      results.push({ name, format: formatId, ok: size > 16, size, path: output.path });
-      log('ok', name, formatId, size);
-    } catch (error) {
-      results.push({ name, format: formatId, ok: false, error: error.message });
-      log('falha', name, formatId, error.stack || error.message);
-    }
-  }
-
-  const docx = {
-    kind: 'file',
-    name: 'Exemplo.docx',
-    path: samplePath,
-    saved: true,
-    ext: '.docx',
-  };
-  for (const formatId of ['pdf', 'png', 'jpg', 'svg', 'txt', 'html', 'rtf', 'docx']) {
-    await check('docx', docx, formatId);
-  }
-
-  const pngPath = path.join(__dirname, 'exemplos', 'Exemplo.png');
-  if (fs.existsSync(pngPath)) {
-    const image = { kind: 'file', name: 'Exemplo.png', path: pngPath, saved: true, ext: '.png' };
-    for (const formatId of ['jpg', 'pdf', 'svg', 'docx']) {
-      await check('png', image, formatId);
-    }
-  }
-
-  const failed = results.filter((item) => !item.ok);
-  console.log(JSON.stringify(results, null, 2));
-  return failed.length ? 1 : 0;
-}
-
 if (process.platform === 'win32') app.setAppUserModelId('com.converts.arquivos');
 
 const gotLock = app.requestSingleInstanceLock();
@@ -702,59 +643,9 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
-    samplePath = await ensureSample();
     wireIpc();
     createWindow();
     createCard();
-    if (process.argv.includes('--pdftext')) {
-      const file = process.argv[process.argv.indexOf('--pdftext') + 1];
-      const started = Date.now();
-      const output = await converter.convert({
-        kind: 'file',
-        name: path.basename(file),
-        path: file,
-        saved: true,
-        ext: '.pdf',
-      }, 'txt');
-      const body = fs.readFileSync(output.path, 'utf8');
-      console.log(JSON.stringify({
-        ms: Date.now() - started,
-        size: body.length,
-        preview: body.slice(0, 180),
-      }));
-      quitting = true;
-      app.exit(0);
-      return;
-    }
-    if (process.argv.includes('--quick')) {
-      const source = {
-        kind: 'file',
-        name: 'Exemplo.docx',
-        path: samplePath,
-        saved: true,
-        ext: '.docx',
-      };
-      const started = Date.now();
-      const times = {};
-      for (const formatId of ['txt', 'html', 'pdf', 'png']) {
-        const mark = Date.now();
-        const output = await converter.convert(source, formatId);
-        times[formatId] = { ms: Date.now() - mark, size: fs.statSync(output.path).size };
-      }
-      log('quick', JSON.stringify(times), 'total', Date.now() - started);
-      console.log(JSON.stringify(times));
-      quitting = true;
-      app.exit(0);
-      return;
-    }
-    if (process.argv.includes('--test')) {
-      win.webContents.once('did-finish-load', async () => {
-        const code = await runSelfTest();
-        quitting = true;
-        app.exit(code);
-      });
-      return;
-    }
     runOffice('probe', {}, log, 1800)
       .then(rememberProbe)
       .catch((error) => log('probe', error.message))
@@ -766,18 +657,6 @@ if (!gotLock) {
     createTray();
     const failedShortcuts = registerHotkeys();
     const registered = failedShortcuts.length === 0;
-    if (process.argv.includes('--demo')) {
-      win.webContents.once('did-finish-load', () => {
-        current = {
-          kind: 'file',
-          name: 'Exemplo.docx',
-          path: samplePath,
-          saved: true,
-          ext: '.docx',
-        };
-        reveal(current);
-      });
-    }
     if (registered && tray) {
       const tip = path.join(app.getPath('userData'), 'converts-tip');
       if (!fs.existsSync(tip)) {

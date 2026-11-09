@@ -1,7 +1,7 @@
 {
   "name": "converts",
   "productName": "Converts",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "description": "Converts, conversor de arquivos no estilo de um menu radial",
   "main": "main.js",
@@ -31,12 +31,11 @@
       "**/*",
       "!dist{,/**}",
       "!dist-release{,/**}",
-      "!converts.log",
-      "!roda.log",
+      "!*.log",
       "!tools{,/**}"
     ],
     "win": {
-      "icon": "assets/icon.ico",
+      "icon": "assets/logo.ico",
       "target": "nsis",
       "artifactName": "Converts-Setup.exe",
       "signAndEditExecutable": false
@@ -44,10 +43,13 @@
     "nsis": {
       "oneClick": true,
       "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Converts",
-      "uninstallDisplayName": "Converts"
+      "uninstallDisplayName": "Converts",
+      "installerLanguages": ["pt_BR"],
+      "warningsAsErrors": false
     }
   }
 }
