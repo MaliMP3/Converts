@@ -7,7 +7,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win portable"
+    "dist": "electron-builder --win nsis"
   },
   "dependencies": {
     "docx": "^9.5.1",
@@ -30,13 +30,24 @@
     "files": [
       "**/*",
       "!dist{,/**}",
-      "!converts.log"
+      "!dist-release{,/**}",
+      "!converts.log",
+      "!roda.log",
+      "!tools{,/**}"
     ],
     "win": {
       "icon": "assets/icon.ico",
-      "target": "portable",
-      "artifactName": "Converts.exe",
+      "target": "nsis",
+      "artifactName": "Converts-Setup.exe",
       "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Converts",
+      "uninstallDisplayName": "Converts"
     }
   }
 }

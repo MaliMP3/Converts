@@ -6,18 +6,19 @@ O atalho padrão é `Ctrl+Shift+Espaço`. Dá para trocar esse atalho dentro do 
 
 ## Baixar e usar
 
-Se você só quer usar o Converts, não precisa instalar Node. Clique no botão, baixe o arquivo e abra.
+Se você só quer usar o Converts, não precisa instalar Node. Clique no botão, baixe o instalador e abra.
 
-[![Baixar Converts para Windows](https://img.shields.io/badge/Baixar-Converts.exe-0A7EA4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/MaliMP3/Converts/releases/latest/download/Converts.exe)
+[![Baixar Converts para Windows](https://img.shields.io/badge/Baixar-Converts--Setup.exe-0A7EA4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/MaliMP3/Converts/releases/latest/download/Converts-Setup.exe)
 
 Outras versões ficam na [página de Releases](https://github.com/MaliMP3/Converts/releases).
 
-Depois de abrir:
+Depois de instalar:
 
-1. O ícone aparece na bandeja
-2. O app continua em segundo plano até você desligar o PC, ou até escolher Sair no menu da bandeja
-3. Para converter, use `Ctrl+Shift+Espaço`
-4. Escolha se é arquivo ou áudio, escolha o formato e pronto
+1. Abra pelo atalho Converts na área de trabalho ou no menu Iniciar
+2. O ícone aparece na bandeja
+3. O app continua em segundo plano até você desligar o PC, ou até escolher Sair no menu da bandeja
+4. Para converter, use `Ctrl+Shift+Espaço`
+5. Escolha se é arquivo ou áudio, escolha o formato e pronto
 
 Se o Word, o Excel ou o PowerPoint estiver aberto, o Converts usa o arquivo que está na frente, inclusive alteração que ainda não foi salva. Se não houver arquivo na janela ativa, ele abre o gerenciador para você escolher.
 
