@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-release/
+tools/
 *.log
 Thumbs.db
 Desktop.ini
